@@ -40,9 +40,7 @@ const saveToDB = async (data: AppData) => {
   const db = await initDB();
   const transaction = db.transaction(STORE_NAME, 'readwrite');
   const store = transaction.objectStore(STORE_NAME);
-  
   const cleanedData = JSON.parse(JSON.stringify(data));
-  // Keep the imageMap paths as virtual asset URLs in IDB
   store.put(cleanedData, DATA_KEY);
 };
 
@@ -80,24 +78,16 @@ const App: React.FC = () => {
   const updateImageCache = async (itemName: string, base64: string): Promise<string> => {
     const fileName = `${encodeURIComponent(itemName.replace(/\s+/g, '-').toLowerCase())}.jpg`;
     const imageUrl = `/images/assets/${fileName}`;
-
     try {
       const response = await fetch(base64);
       const blob = await response.blob();
       const cache = await caches.open(IMAGE_CACHE_NAME);
-      await cache.put(imageUrl, new Response(blob, {
-        headers: { 'Content-Type': 'image/jpeg' }
-      }));
-      
+      await cache.put(imageUrl, new Response(blob, { headers: { 'Content-Type': 'image/jpeg' } }));
       setData(prev => {
-        const updated = {
-          ...prev,
-          imageMap: { ...prev.imageMap, [itemName]: imageUrl }
-        };
+        const updated = { ...prev, imageMap: { ...prev.imageMap, [itemName]: imageUrl } };
         saveToDB(updated);
         return updated;
       });
-      
       return imageUrl;
     } catch (e) {
       console.error("Failed to store image", e);
@@ -108,76 +98,95 @@ const App: React.FC = () => {
   const selectedKid = data.kids.find(k => k.id === selectedKidId);
   const currentLang = LANGUAGES.find(l => l.code === data.language) || LANGUAGES[0];
 
+  const toggleSettings = () => {
+    setCurrentView(currentView === 'admin' ? 'home' : 'admin');
+    setSelectedKidId(null);
+  };
+
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-indigo-600 font-medium">Accessing Filesystem...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
+        <div className="w-16 h-16 premium-gradient rounded-3xl animate-pulse flex items-center justify-center shadow-xl mb-6">
+          <svg className="w-8 h-8 text-white animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
         </div>
+        <p className="text-slate-500 font-semibold text-sm tracking-widest uppercase">Initializing Pro Suite</p>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen max-w-md mx-auto bg-white shadow-2xl relative flex flex-col`} dir={currentLang.dir}>
-      <header className="px-6 pt-12 pb-6 bg-indigo-600 text-white rounded-b-3xl ios-shadow">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">{data.language === 'he' ? 'לו״ז הילדים' : 'KidSchedule'}</h1>
-            <p className="text-indigo-100 text-sm">{data.language === 'he' ? 'עוזר הורים' : 'Parent Assistant'}</p>
+    <div className="min-h-screen max-w-lg mx-auto bg-slate-50 flex flex-col shadow-2xl overflow-hidden" dir={currentLang.dir}>
+      {/* Dynamic Header Section */}
+      <div className="premium-gradient pb-16 pt-12 px-8 rounded-b-[3.5rem] shadow-xl relative z-20">
+        <header className="flex justify-between items-center text-white">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-extrabold tracking-tight">
+              {data.language === 'he' ? 'לו״ז הילדים' : 'School Buddy'}
+            </h1>
+            <p className="text-white/70 text-sm font-medium">
+              {data.language === 'he' ? 'העוזר האישי שלך' : 'Your smart school assistant'}
+            </p>
           </div>
           <button 
-            onClick={() => {
-              setCurrentView(currentView === 'admin' ? 'home' : 'admin');
-              setSelectedKidId(null);
-            }}
-            className="bg-white/20 p-2 rounded-full hover:bg-white/30 transition-colors"
+            onClick={toggleSettings}
+            className="flex flex-col items-center gap-1 group"
+            aria-label="Settings"
           >
-            {currentView === 'admin' ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-              </svg>
-            )}
+            <div className="bg-white/20 backdrop-blur-md p-3 rounded-2xl border border-white/30 group-hover:bg-white/40 transition-all active:scale-90 shadow-lg">
+              {currentView === 'admin' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              )}
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-tighter text-white/90">
+              {currentView === 'admin' ? (data.language === 'he' ? 'בית' : 'Home') : (data.language === 'he' ? 'הגדרות' : 'Settings')}
+            </span>
           </button>
-        </div>
-      </header>
+        </header>
+      </div>
 
-      <main className="flex-1 overflow-y-auto px-4 py-6 mb-20">
-        {currentView === 'home' && (
-          <MainArea 
-            kids={data.kids} 
-            templates={data.templates} 
-            imageMap={data.imageMap}
-            lang={data.language}
-            onSelectKid={(id) => { setSelectedKidId(id); setCurrentView('kid-detail'); }} 
-            onImageGenerated={updateImageCache}
-          />
-        )}
-        {currentView === 'admin' && (
-          <AdminArea data={data} onUpdateData={persistData} onImageGenerated={updateImageCache} />
-        )}
-        {currentView === 'kid-detail' && selectedKid && (
-          <KidDetail 
-            kid={selectedKid} 
-            templates={data.templates}
-            imageMap={data.imageMap}
-            lang={data.language}
-            onBack={() => setCurrentView('home')} 
-            onUpdateKid={(updatedKid) => {
-              const updatedKids = data.kids.map(k => k.id === updatedKid.id ? updatedKid : k);
-              persistData({ ...data, kids: updatedKids });
-            }}
-            onImageGenerated={updateImageCache}
-          />
-        )}
+      <main className="flex-1 px-6 -mt-10 relative z-30 pb-12 overflow-y-auto no-scrollbar">
+        <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-6 min-h-[70vh] border border-white/50 shadow-2xl">
+          {currentView === 'home' && (
+            <MainArea 
+              kids={data.kids} 
+              templates={data.templates} 
+              imageMap={data.imageMap}
+              lang={data.language}
+              onSelectKid={(id) => { setSelectedKidId(id); setCurrentView('kid-detail'); }} 
+              onImageGenerated={updateImageCache}
+              onGoToSettings={() => setCurrentView('admin')}
+            />
+          )}
+          {currentView === 'admin' && (
+            <AdminArea data={data} onUpdateData={persistData} onImageGenerated={updateImageCache} />
+          )}
+          {currentView === 'kid-detail' && selectedKid && (
+            <KidDetail 
+              kid={selectedKid} 
+              templates={data.templates}
+              imageMap={data.imageMap}
+              lang={data.language}
+              onBack={() => setCurrentView('home')} 
+              onUpdateKid={(updatedKid) => {
+                const updatedKids = data.kids.map(k => k.id === updatedKid.id ? updatedKid : k);
+                persistData({ ...data, kids: updatedKids });
+              }}
+              onImageGenerated={updateImageCache}
+            />
+          )}
+        </div>
       </main>
 
-      <div className="h-8 bg-white safe-bottom" />
+      <footer className="h-6 safe-bottom bg-slate-50" />
     </div>
   );
 };

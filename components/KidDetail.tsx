@@ -22,6 +22,7 @@ const KidDetail: React.FC<Props> = ({ kid, templates, imageMap, lang, onBack, on
   const [error, setError] = useState<string | null>(null);
 
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
+  const isRTL = lang === 'he' || lang === 'ar';
 
   const getToday = (): DayOfWeek => {
     const day = new Date().getDay();
@@ -46,13 +47,6 @@ const KidDetail: React.FC<Props> = ({ kid, templates, imageMap, lang, onBack, on
       })
   )).filter(Boolean);
 
-  const isOverlapping = (newSlot: ClassSchedule): boolean => {
-    return kid.schedule.some(existing => {
-      if (existing.dayOfWeek !== newSlot.dayOfWeek || existing.id === newSlot.id) return false;
-      return newSlot.startTime < existing.endTime && newSlot.endTime > existing.startTime;
-    });
-  };
-
   const handleSaveSlot = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
@@ -72,11 +66,6 @@ const KidDetail: React.FC<Props> = ({ kid, templates, imageMap, lang, onBack, on
       endTime,
     };
 
-    if (isOverlapping(newSlot)) {
-      setError(t.timeConflict);
-      return;
-    }
-
     const updated = editingSlot 
       ? kid.schedule.map(s => s.id === editingSlot.id ? newSlot : s)
       : [...kid.schedule, newSlot];
@@ -87,76 +76,98 @@ const KidDetail: React.FC<Props> = ({ kid, templates, imageMap, lang, onBack, on
     setError(null);
   };
 
-  const isRTL = lang === 'he' || lang === 'ar';
-
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-8 pb-24">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 -mx-2 text-indigo-600 transform flip-rtl">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+          <button onClick={onBack} className="p-2.5 bg-slate-100 rounded-2xl text-slate-600 active:scale-90 transition-all transform flip-rtl">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
           </button>
           <div>
             <h2 className="text-2xl font-extrabold text-slate-900 leading-tight">{kid.name}</h2>
-            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest leading-none">{viewMode === 'today' ? t.todaysBag : t.weeklyPlanner}</p>
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">{viewMode === 'today' ? t.todaysBag : t.weeklyPlanner}</p>
           </div>
         </div>
-        <div className="flex bg-slate-100 p-1 rounded-xl">
-          <button onClick={() => setViewMode('today')} className={`px-3 py-1.5 text-xs font-bold rounded-lg ${viewMode === 'today' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>{t.today}</button>
-          <button onClick={() => setViewMode('week')} className={`px-3 py-1.5 text-xs font-bold rounded-lg ${viewMode === 'week' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>{t.week}</button>
+        <div className="flex bg-slate-100 p-1.5 rounded-[1.2rem] shadow-inner">
+          <button onClick={() => setViewMode('today')} className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${viewMode === 'today' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500'}`}>{t.today}</button>
+          <button onClick={() => setViewMode('week')} className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${viewMode === 'week' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500'}`}>{t.week}</button>
         </div>
       </div>
 
-      <div className="bg-emerald-600 text-white p-6 rounded-3xl ios-shadow">
-        <h3 className={`font-bold text-xs uppercase mb-5 text-emerald-100 tracking-wider ${isRTL ? 'text-sm tracking-normal uppercase-none' : ''}`}>
-          {t.requiredFor.replace('{day}', today)}
+      <div className="premium-gradient p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -mr-20 -mt-20 group-hover:scale-110 transition-transform duration-700" />
+        
+        <h3 className="font-bold text-sm uppercase mb-6 text-white/80 tracking-widest flex items-center gap-2">
+           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 118 0m-4 8v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v2M7 7h10" />
+           </svg>
+           {t.requiredFor.replace('{day}', today)}
         </h3>
-        <div className="grid grid-cols-2 gap-4">
+        
+        <div className="grid grid-cols-2 gap-5">
           {todaySummary.length > 0 ? todaySummary.map((item, idx) => (
-            <div key={idx} className="bg-white/10 p-4 rounded-2xl flex flex-col items-center text-center gap-3 border border-white/20 backdrop-blur-md shadow-lg relative min-h-[160px]">
-              <span className={`item-text-hebrew text-white line-clamp-2 w-full flex items-center justify-center h-12 ${isRTL ? 'text-lg' : 'text-xs uppercase tracking-tight font-extrabold'}`}>
+            <div key={idx} className="bg-white/10 p-5 rounded-[1.8rem] flex flex-col items-center text-center gap-4 border border-white/20 backdrop-blur-xl shadow-lg hover:bg-white/15 transition-colors group/item">
+              <div className="w-24 h-24 relative">
+                <ItemImage itemName={item} size="md" cachedImage={imageMap[item]} onImageGenerated={onImageGenerated} />
+                <div className="absolute -bottom-2 -right-2 bg-emerald-400 text-white rounded-full p-1.5 border-4 border-white shadow-lg group-hover/item:scale-110 transition-transform">
+                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                </div>
+              </div>
+              <span className={`text-white font-bold leading-tight ${isRTL ? 'text-lg' : 'text-xs uppercase tracking-tight'}`}>
                 {item.toLowerCase().startsWith('book:') ? item.substring(5).trim() : item}
               </span>
-              <div className="w-20 h-20 relative">
-                <ItemImage itemName={item} size="md" cachedImage={imageMap[item]} onImageGenerated={onImageGenerated} />
-              </div>
-              <div className="absolute top-2 end-2 bg-emerald-400 text-emerald-900 rounded-full w-5 h-5 flex items-center justify-center text-[11px] font-bold border-2 border-emerald-600 shadow-md">✓</div>
             </div>
-          )) : <p className="text-emerald-50 text-sm italic col-span-2">{t.nothingNeeded}</p>}
+          )) : (
+            <div className="col-span-2 py-10 text-center text-white/60 space-y-2">
+              <div className="text-4xl">🎉</div>
+              <p className="text-sm font-medium italic">{t.nothingNeeded}</p>
+            </div>
+          )}
         </div>
       </div>
 
       {viewMode === 'week' && (
-        <div className="flex overflow-x-auto gap-2 py-1 no-scrollbar">
+        <div className="flex overflow-x-auto gap-3 py-2 no-scrollbar px-1">
           {DAYS.map(day => (
-            <button key={day} onClick={() => setSelectedDay(day)} className={`flex-shrink-0 px-4 py-2 rounded-2xl text-xs font-bold transition-all border ${selectedDay === day ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200'}`}>{day.substring(0, 3)}</button>
+            <button key={day} onClick={() => setSelectedDay(day)} className={`flex-shrink-0 px-6 py-3 rounded-2xl text-xs font-bold transition-all border-2 ${selectedDay === day ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-200'}`}>
+              {day.substring(0, 3)}
+            </button>
           ))}
         </div>
       )}
 
-      <div className="space-y-4">
-        <div className="flex justify-between items-center px-2">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{activeDay}</h3>
-          <button onClick={() => { setEditingSlot(null); setShowAddForm(true); setError(null); }} className="text-indigo-600 font-bold text-sm">{t.addClass}</button>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center px-1">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-6 bg-indigo-500 rounded-full" />
+            <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-widest">{activeDay}</h3>
+          </div>
+          <button onClick={() => { setEditingSlot(null); setShowAddForm(true); setError(null); }} className="text-indigo-600 font-bold text-sm bg-indigo-50 px-4 py-2 rounded-xl active:scale-95 transition-all">{t.addClass}</button>
         </div>
 
-        <div className="space-y-3">
-          {currentSchedule.map(slot => {
+        <div className="space-y-4">
+          {currentSchedule.length === 0 ? (
+            <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] p-10 text-center">
+              <p className="text-slate-400 text-sm font-medium">No classes scheduled for this day</p>
+            </div>
+          ) : currentSchedule.map(slot => {
             const temp = templates.find(tm => tm.id === slot.templateId);
             return (
-              <div key={slot.id} className="bg-white border rounded-3xl p-5 shadow-sm">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h4 className="font-bold text-slate-800 text-base">{temp?.name}</h4>
-                    <p className="text-xs text-slate-500">{t.teacher}: {temp?.teacher}</p>
+              <div key={slot.id} className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm hover:shadow-md transition-shadow group">
+                <div className="flex justify-between items-start mb-6">
+                  <div className="space-y-1">
+                    <h4 className="font-extrabold text-slate-800 text-lg group-hover:text-indigo-600 transition-colors">{temp?.name}</h4>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{t.teacher}: {temp?.teacher}</p>
                   </div>
-                  <div className="text-end text-xs font-bold text-slate-400" dir="ltr">{slot.startTime} - {slot.endTime}</div>
+                  <div className="bg-slate-50 px-3 py-1.5 rounded-lg text-xs font-extrabold text-slate-500 border border-slate-100" dir="ltr">
+                    {slot.startTime} – {slot.endTime}
+                  </div>
                 </div>
-                <div className="flex justify-end gap-2 pt-3 border-t border-slate-50">
-                  <button onClick={() => { setEditingSlot(slot); setShowAddForm(true); setError(null); }} className="p-2 text-indigo-500 bg-indigo-50 rounded-lg">
+                <div className="flex justify-end gap-3">
+                  <button onClick={() => { setEditingSlot(slot); setShowAddForm(true); setError(null); }} className="p-3 text-indigo-500 bg-indigo-50/50 rounded-2xl hover:bg-indigo-50 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                   </button>
-                  <button onClick={() => onUpdateKid({...kid, schedule: kid.schedule.filter(s => s.id !== slot.id)})} className="p-2 text-rose-500 bg-rose-50 rounded-lg">
+                  <button onClick={() => onUpdateKid({...kid, schedule: kid.schedule.filter(s => s.id !== slot.id)})} className="p-3 text-rose-500 bg-rose-50/50 rounded-2xl hover:bg-rose-50 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                   </button>
                 </div>
@@ -167,41 +178,48 @@ const KidDetail: React.FC<Props> = ({ kid, templates, imageMap, lang, onBack, on
       </div>
 
       {(showAddForm || editingSlot) && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl overflow-y-auto max-h-[90vh]">
-            <h3 className="text-lg font-bold">{editingSlot ? t.edit : t.save}</h3>
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-t-[3rem] sm:rounded-[3rem] p-8 space-y-6 shadow-2xl overflow-y-auto max-h-[90vh] animate-in slide-in-from-bottom-10 duration-300">
+            <div className="flex justify-between items-center">
+              <h3 className="text-2xl font-extrabold text-slate-900">{editingSlot ? t.edit : t.save}</h3>
+              <button onClick={() => { setShowAddForm(false); setEditingSlot(null); setError(null); }} className="text-slate-400 hover:text-slate-600 transition-colors">
+                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            
             {error && (
-              <div className="bg-rose-50 text-rose-600 p-3 rounded-xl text-xs font-bold border border-rose-100">
+              <div className="bg-rose-50 text-rose-600 p-4 rounded-2xl text-xs font-bold border border-rose-100 animate-bounce">
                 {error}
               </div>
             )}
-            <form onSubmit={handleSaveSlot} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{t.templates}</label>
-                <select required name="templateId" defaultValue={editingSlot?.templateId} className="w-full p-3 bg-white rounded-xl border border-slate-200 shadow-sm text-sm">
+            
+            <form onSubmit={handleSaveSlot} className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.templates}</label>
+                <select required name="templateId" defaultValue={editingSlot?.templateId} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 text-sm font-semibold">
                   <option value="">{t.chooseClass}</option>
                   {templates.map(tm => <option key={tm.id} value={tm.id}>{tm.name}</option>)}
                 </select>
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{t.week}</label>
-                <select name="dayOfWeek" defaultValue={editingSlot?.dayOfWeek || activeDay} className="w-full p-3 bg-white rounded-xl border border-slate-200 shadow-sm text-sm">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.week}</label>
+                <select name="dayOfWeek" defaultValue={editingSlot?.dayOfWeek || activeDay} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 text-sm font-semibold">
                   {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{t.startTime}</label>
-                  <input required name="startTime" type="time" defaultValue={editingSlot?.startTime || '08:00'} className="w-full p-3 rounded-xl border border-slate-200 shadow-sm" />
+              <div className="grid grid-cols-2 gap-5">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.startTime}</label>
+                  <input required name="startTime" type="time" defaultValue={editingSlot?.startTime || '08:00'} className="w-full p-4 rounded-2xl border border-slate-100 bg-slate-50 font-semibold" />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{t.endTime}</label>
-                  <input required name="endTime" type="time" defaultValue={editingSlot?.endTime || '09:00'} className="w-full p-3 rounded-xl border border-slate-200 shadow-sm" />
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.endTime}</label>
+                  <input required name="endTime" type="time" defaultValue={editingSlot?.endTime || '09:00'} className="w-full p-4 rounded-2xl border border-slate-100 bg-slate-50 font-semibold" />
                 </div>
               </div>
-              <div className="flex gap-3 pt-4">
-                <button type="submit" className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-lg active:scale-95 transition-all">{t.save}</button>
-                <button type="button" onClick={() => { setShowAddForm(false); setEditingSlot(null); setError(null); }} className="flex-1 bg-slate-100 py-3 rounded-xl font-bold text-slate-600">{t.cancel}</button>
+              <div className="flex gap-4 pt-6">
+                <button type="submit" className="flex-[2] premium-gradient text-white py-4 rounded-2xl font-extrabold shadow-xl active:scale-95 transition-all">{t.save}</button>
+                <button type="button" onClick={() => { setShowAddForm(false); setEditingSlot(null); setError(null); }} className="flex-1 bg-slate-100 py-4 rounded-2xl font-bold text-slate-500 hover:bg-slate-200 transition-colors">{t.cancel}</button>
               </div>
             </form>
           </div>
