@@ -5,14 +5,15 @@ interface Props {
   itemName: string;
   size?: 'sm' | 'md';
   cachedImage?: string;
-  onImageGenerated?: (itemName: string, base64: string) => void;
+  onImageNeeded?: (itemName: string) => void;
 }
 
 const IMAGE_CACHE_NAME = 'kid-schedule-images-v1';
 
-const ItemImage: React.FC<Props> = ({ itemName, size = 'sm', cachedImage }) => {
+const ItemImage: React.FC<Props> = ({ itemName, size = 'sm', cachedImage, onImageNeeded }) => {
   const [displayUrl, setDisplayUrl] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   
   const dimensions = size === 'sm' ? 'w-10 h-10' : 'w-24 h-24';
   const fontSize = size === 'sm' ? 'text-sm' : 'text-3xl';
@@ -24,7 +25,14 @@ const ItemImage: React.FC<Props> = ({ itemName, size = 'sm', cachedImage }) => {
 
     const loadFromFileSystem = async () => {
       if (!cachedImage) {
-        if (isActive) setDisplayUrl(null);
+        if (isActive) {
+          setDisplayUrl(null);
+          // Only trigger generation if we have a callback and haven't tried recently
+          if (onImageNeeded) {
+            setIsGenerating(true);
+            onImageNeeded(itemName);
+          }
+        }
         return;
       }
       try {
@@ -34,6 +42,7 @@ const ItemImage: React.FC<Props> = ({ itemName, size = 'sm', cachedImage }) => {
           const blob = await response.blob();
           objectUrl = URL.createObjectURL(blob);
           setDisplayUrl(objectUrl);
+          setIsGenerating(false);
         } else if (isActive) {
           setDisplayUrl(null);
         }
@@ -48,11 +57,12 @@ const ItemImage: React.FC<Props> = ({ itemName, size = 'sm', cachedImage }) => {
       isActive = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [cachedImage]);
+  }, [cachedImage, itemName, onImageNeeded]);
 
   const Fallback = () => (
-    <div className={`${dimensions} ${radius} bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-300 font-extrabold shadow-inner`}>
-      <span className={fontSize}>
+    <div className={`${dimensions} ${radius} bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-300 font-extrabold shadow-inner relative overflow-hidden`}>
+      {isGenerating && <div className="absolute inset-0 shimmer opacity-50" />}
+      <span className={`${fontSize} relative z-10`}>
         {itemName.trim().charAt(0).toUpperCase()}
       </span>
     </div>

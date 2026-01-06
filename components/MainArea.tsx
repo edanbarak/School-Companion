@@ -9,13 +9,13 @@ interface Props {
   imageMap: Record<string, string>;
   lang: string;
   onSelectKid: (id: string) => void;
-  onImageGenerated: (itemName: string, base64: string) => void;
+  onImageNeeded: (itemName: string) => void;
   onGoToSettings: () => void;
 }
 
 const DAYS: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-const MainArea: React.FC<Props> = ({ kids, templates, imageMap, lang, onSelectKid, onImageGenerated, onGoToSettings }) => {
+const MainArea: React.FC<Props> = ({ kids, templates, imageMap, lang, onSelectKid, onImageNeeded, onGoToSettings }) => {
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
   const isRTL = lang === 'he' || lang === 'ar';
   
@@ -26,13 +26,14 @@ const MainArea: React.FC<Props> = ({ kids, templates, imageMap, lang, onSelectKi
   };
 
   const today = getToday();
+  const localizedToday = t.days[today] || today;
 
   return (
     <div className="space-y-8">
       <div className="space-y-2">
         <h2 className="text-3xl font-extrabold text-slate-900">{t.goodMorning}</h2>
         <p className="text-slate-500 font-medium">
-          {t.todayIs.replace('{day}', today)}
+          {t.todayIs.replace('{day}', localizedToday)}
         </p>
       </div>
 
@@ -45,8 +46,8 @@ const MainArea: React.FC<Props> = ({ kids, templates, imageMap, lang, onSelectKi
                 </svg>
              </div>
              <div className="space-y-2">
-               <p className="text-slate-800 font-extrabold text-xl">Welcome to School Buddy</p>
-               <p className="text-slate-400 font-medium text-sm px-8">Let's get started by adding your children and their class schedules.</p>
+               <p className="text-slate-800 font-extrabold text-xl">{t.welcome}</p>
+               <p className="text-slate-400 font-medium text-sm px-8">{t.welcomeSub}</p>
              </div>
              <button 
                 onClick={onGoToSettings}
@@ -55,7 +56,7 @@ const MainArea: React.FC<Props> = ({ kids, templates, imageMap, lang, onSelectKi
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
-                <span>Add Your First Kid</span>
+                <span>{t.addFirst}</span>
              </button>
           </div>
         ) : kids.map(kid => {
@@ -73,7 +74,6 @@ const MainArea: React.FC<Props> = ({ kids, templates, imageMap, lang, onSelectKi
               onClick={() => onSelectKid(kid.id)}
               className="w-full bg-white p-6 rounded-[2rem] border border-slate-100 ios-shadow-lg flex flex-col group active:scale-[0.98] transition-all text-start relative overflow-hidden"
             >
-              {/* Decorative accent */}
               <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-full -mr-16 -mt-16 group-hover:bg-indigo-100/50 transition-colors" />
               
               <div className="flex items-center mb-6 relative z-10">
@@ -95,7 +95,7 @@ const MainArea: React.FC<Props> = ({ kids, templates, imageMap, lang, onSelectKi
                 {packingList.length > 0 ? (
                   packingList.map((item, i) => (
                     <div key={i} className="flex items-center gap-2 bg-slate-50 text-slate-700 px-3 py-1.5 rounded-xl border border-slate-100 shadow-sm group-hover:bg-white transition-colors">
-                      <ItemImage itemName={item} size="sm" cachedImage={imageMap[item]} onImageGenerated={onImageGenerated} />
+                      <ItemImage itemName={item} size="sm" cachedImage={imageMap[item]} onImageNeeded={onImageNeeded} />
                       <span className="text-[11px] font-bold">
                         {item.toLowerCase().startsWith('book:') ? item.substring(5).trim() : item}
                       </span>

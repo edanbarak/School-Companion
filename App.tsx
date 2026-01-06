@@ -1,9 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Kid, AppView, ClassTemplate, AppData, LANGUAGES } from './types';
 import AdminArea from './components/AdminArea';
 import MainArea from './components/MainArea';
 import KidDetail from './components/KidDetail';
+import { GoogleGenAI } from "@google/genai";
 
 const DB_NAME = 'KidScheduleDB';
 const DB_VERSION = 1;
@@ -75,7 +76,7 @@ const App: React.FC = () => {
     await saveToDB(newData);
   };
 
-  const updateImageCache = async (itemName: string, base64: string): Promise<string> => {
+  const updateImageCache = useCallback(async (itemName: string, base64: string): Promise<string> => {
     const fileName = `${encodeURIComponent(itemName.replace(/\s+/g, '-').toLowerCase())}.jpg`;
     const imageUrl = `/images/assets/${fileName}`;
     try {
@@ -83,6 +84,7 @@ const App: React.FC = () => {
       const blob = await response.blob();
       const cache = await caches.open(IMAGE_CACHE_NAME);
       await cache.put(imageUrl, new Response(blob, { headers: { 'Content-Type': 'image/jpeg' } }));
+      
       setData(prev => {
         const updated = { ...prev, imageMap: { ...prev.imageMap, [itemName]: imageUrl } };
         saveToDB(updated);
@@ -93,7 +95,33 @@ const App: React.FC = () => {
       console.error("Failed to store image", e);
       return "";
     }
-  };
+  }, []);
+
+  const triggerImageGeneration = useCallback(async (itemName: string) => {
+    try {
+      const apiKey = process.env.API_KEY;
+      if (!apiKey) return;
+      const ai = new GoogleGenAI({ apiKey });
+      const isBook = itemName.toLowerCase().startsWith('book:');
+      const searchPrompt = isBook 
+        ? `The front cover of a school book titled "${itemName.substring(5).trim()}". Professional, clear text.`
+        : `A professional high-quality photo of a ${itemName} for a school bag. Isolated on a neutral light background.`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image',
+        contents: { parts: [{ text: searchPrompt }] },
+        config: { imageConfig: { aspectRatio: "1:1" } }
+      });
+
+      const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
+      if (part?.inlineData?.data) {
+        const b64 = `data:image/png;base64,${part.inlineData.data}`;
+        await updateImageCache(itemName, b64);
+      }
+    } catch (e) {
+      console.error(`Dynamic generation failed for ${itemName}`, e);
+    }
+  }, [updateImageCache]);
 
   const selectedKid = data.kids.find(k => k.id === selectedKidId);
   const currentLang = LANGUAGES.find(l => l.code === data.language) || LANGUAGES[0];
@@ -118,7 +146,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen max-w-lg mx-auto bg-slate-50 flex flex-col shadow-2xl overflow-hidden" dir={currentLang.dir}>
-      {/* Dynamic Header Section */}
       <div className="premium-gradient pb-16 pt-12 px-8 rounded-b-[3.5rem] shadow-xl relative z-20">
         <header className="flex justify-between items-center text-white">
           <div className="space-y-1">
@@ -162,7 +189,7 @@ const App: React.FC = () => {
               imageMap={data.imageMap}
               lang={data.language}
               onSelectKid={(id) => { setSelectedKidId(id); setCurrentView('kid-detail'); }} 
-              onImageGenerated={updateImageCache}
+              onImageNeeded={triggerImageGeneration}
               onGoToSettings={() => setCurrentView('admin')}
             />
           )}
@@ -180,7 +207,7 @@ const App: React.FC = () => {
                 const updatedKids = data.kids.map(k => k.id === updatedKid.id ? updatedKid : k);
                 persistData({ ...data, kids: updatedKids });
               }}
-              onImageGenerated={updateImageCache}
+              onImageNeeded={triggerImageGeneration}
             />
           )}
         </div>

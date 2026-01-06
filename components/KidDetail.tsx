@@ -10,12 +10,12 @@ interface Props {
   lang: string;
   onBack: () => void;
   onUpdateKid: (kid: Kid) => void;
-  onImageGenerated: (itemName: string, base64: string) => void;
+  onImageNeeded: (itemName: string) => void;
 }
 
 const DAYS: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-const KidDetail: React.FC<Props> = ({ kid, templates, imageMap, lang, onBack, onUpdateKid, onImageGenerated }) => {
+const KidDetail: React.FC<Props> = ({ kid, templates, imageMap, lang, onBack, onUpdateKid, onImageNeeded }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingSlot, setEditingSlot] = useState<ClassSchedule | null>(null);
   const [viewMode, setViewMode] = useState<'today' | 'week'>('today');
@@ -101,14 +101,14 @@ const KidDetail: React.FC<Props> = ({ kid, templates, imageMap, lang, onBack, on
            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 118 0m-4 8v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v2M7 7h10" />
            </svg>
-           {t.requiredFor.replace('{day}', today)}
+           {t.requiredFor.replace('{day}', t.days[today] || today)}
         </h3>
         
         <div className="grid grid-cols-2 gap-5">
           {todaySummary.length > 0 ? todaySummary.map((item, idx) => (
             <div key={idx} className="bg-white/10 p-5 rounded-[1.8rem] flex flex-col items-center text-center gap-4 border border-white/20 backdrop-blur-xl shadow-lg hover:bg-white/15 transition-colors group/item">
               <div className="w-24 h-24 relative">
-                <ItemImage itemName={item} size="md" cachedImage={imageMap[item]} onImageGenerated={onImageGenerated} />
+                <ItemImage itemName={item} size="md" cachedImage={imageMap[item]} onImageNeeded={onImageNeeded} />
                 <div className="absolute -bottom-2 -right-2 bg-emerald-400 text-white rounded-full p-1.5 border-4 border-white shadow-lg group-hover/item:scale-110 transition-transform">
                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                 </div>
@@ -130,7 +130,7 @@ const KidDetail: React.FC<Props> = ({ kid, templates, imageMap, lang, onBack, on
         <div className="flex overflow-x-auto gap-3 py-2 no-scrollbar px-1">
           {DAYS.map(day => (
             <button key={day} onClick={() => setSelectedDay(day)} className={`flex-shrink-0 px-6 py-3 rounded-2xl text-xs font-bold transition-all border-2 ${selectedDay === day ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-200'}`}>
-              {day.substring(0, 3)}
+              {(t.days[day] || day).substring(0, 3)}
             </button>
           ))}
         </div>
@@ -140,7 +140,7 @@ const KidDetail: React.FC<Props> = ({ kid, templates, imageMap, lang, onBack, on
         <div className="flex justify-between items-center px-1">
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-6 bg-indigo-500 rounded-full" />
-            <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-widest">{activeDay}</h3>
+            <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-widest">{t.days[activeDay] || activeDay}</h3>
           </div>
           <button onClick={() => { setEditingSlot(null); setShowAddForm(true); setError(null); }} className="text-indigo-600 font-bold text-sm bg-indigo-50 px-4 py-2 rounded-xl active:scale-95 transition-all">{t.addClass}</button>
         </div>
@@ -148,7 +148,7 @@ const KidDetail: React.FC<Props> = ({ kid, templates, imageMap, lang, onBack, on
         <div className="space-y-4">
           {currentSchedule.length === 0 ? (
             <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] p-10 text-center">
-              <p className="text-slate-400 text-sm font-medium">No classes scheduled for this day</p>
+              <p className="text-slate-400 text-sm font-medium">{t.noClasses}</p>
             </div>
           ) : currentSchedule.map(slot => {
             const temp = templates.find(tm => tm.id === slot.templateId);
@@ -195,7 +195,7 @@ const KidDetail: React.FC<Props> = ({ kid, templates, imageMap, lang, onBack, on
             
             <form onSubmit={handleSaveSlot} className="space-y-5">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.templates}</label>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.classTemplates}</label>
                 <select required name="templateId" defaultValue={editingSlot?.templateId} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 text-sm font-semibold">
                   <option value="">{t.chooseClass}</option>
                   {templates.map(tm => <option key={tm.id} value={tm.id}>{tm.name}</option>)}
@@ -204,7 +204,7 @@ const KidDetail: React.FC<Props> = ({ kid, templates, imageMap, lang, onBack, on
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.week}</label>
                 <select name="dayOfWeek" defaultValue={editingSlot?.dayOfWeek || activeDay} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 text-sm font-semibold">
-                  {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                  {DAYS.map(d => <option key={d} value={d}>{t.days[d] || d}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-5">

@@ -23,7 +23,6 @@ const AdminArea: React.FC<Props> = ({ data, onUpdateData, onImageGenerated }) =>
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [editingKidId, setEditingKidId] = useState<string | null>(null);
 
-  // Use @google/genai to generate images for items
   const generateSingleImage = async (itemName: string): Promise<string | null> => {
     try {
       const apiKey = process.env.API_KEY;
@@ -109,14 +108,13 @@ const AdminArea: React.FC<Props> = ({ data, onUpdateData, onImageGenerated }) =>
     setIsGeneratingImages(false);
   };
 
-  // Fixed handleImport implementation
   const handleImport = () => {
     try {
       const parsed = JSON.parse(importText);
       if (parsed && typeof parsed === 'object') {
         onUpdateData(parsed as AppData);
         setImportText('');
-        alert('Data restored successfully');
+        alert('Restored successfully');
       }
     } catch (e) {
       console.error("Restoration failed", e);
@@ -126,7 +124,6 @@ const AdminArea: React.FC<Props> = ({ data, onUpdateData, onImageGenerated }) =>
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Sliding Tab Navigator */}
       <div className="relative flex bg-slate-100 p-1.5 rounded-2xl mx-1 shadow-inner">
         {['kids', 'templates', 'language', 'debug'].map((tab) => (
           <button 
@@ -169,7 +166,7 @@ const AdminArea: React.FC<Props> = ({ data, onUpdateData, onImageGenerated }) =>
               {activeTab === 'kids' ? t.kidProfiles : t.classTemplates}
             </h2>
             <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mt-1">
-              {activeTab === 'kids' ? `${data.kids.length} Managed` : `${data.templates.length} Saved`}
+              {activeTab === 'kids' ? `${data.kids.length} ${t.managed}` : `${data.templates.length} ${t.saved}`}
             </p>
           </div>
           <button 
@@ -185,23 +182,23 @@ const AdminArea: React.FC<Props> = ({ data, onUpdateData, onImageGenerated }) =>
       {showAddForm && (
         <div className="bg-white p-8 rounded-[2.5rem] space-y-5 border-2 border-indigo-50 shadow-2xl animate-in zoom-in-95 duration-300">
           <h3 className="text-lg font-extrabold text-slate-800">
-            {activeTab === 'kids' ? 'Create New Profile' : 'Configure Class'}
+            {activeTab === 'kids' ? t.createProfile : t.configureClass}
           </h3>
           
           {activeTab === 'kids' ? (
             <div className="space-y-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.name}</label>
-                <input className="w-full p-4 rounded-2xl border border-slate-100 bg-slate-50 font-semibold" placeholder="e.g. Leo Smith" value={newKid.name} onChange={e => setNewKid({...newKid, name: e.target.value})} />
+                <input className="w-full p-4 rounded-2xl border border-slate-100 bg-slate-50 font-semibold" placeholder={t.namePlaceholder} value={newKid.name} onChange={e => setNewKid({...newKid, name: e.target.value})} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.age}</label>
-                  <input className="w-full p-4 rounded-2xl border border-slate-100 bg-slate-50 font-semibold" placeholder="Years" type="number" value={newKid.age} onChange={e => setNewKid({...newKid, age: e.target.value})} />
+                  <input className="w-full p-4 rounded-2xl border border-slate-100 bg-slate-50 font-semibold" placeholder={t.agePlaceholder} type="number" value={newKid.age} onChange={e => setNewKid({...newKid, age: e.target.value})} />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.grade}</label>
-                  <input className="w-full p-4 rounded-2xl border border-slate-100 bg-slate-50 font-semibold" placeholder="Level" value={newKid.grade} onChange={e => setNewKid({...newKid, grade: e.target.value})} />
+                  <input className="w-full p-4 rounded-2xl border border-slate-100 bg-slate-50 font-semibold" placeholder={t.gradePlaceholder} value={newKid.grade} onChange={e => setNewKid({...newKid, grade: e.target.value})} />
                 </div>
               </div>
               <button onClick={handleAddKid} className="w-full premium-gradient text-white py-4 rounded-2xl font-extrabold shadow-xl mt-2 active:scale-95 transition-all">
@@ -211,22 +208,22 @@ const AdminArea: React.FC<Props> = ({ data, onUpdateData, onImageGenerated }) =>
           ) : (
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Class {t.name}</label>
-                <input className="w-full p-4 rounded-2xl border border-slate-100 bg-slate-50 font-semibold" placeholder="e.g. Biology, Art..." value={newTemplate.name} onChange={e => setNewTemplate({...newTemplate, name: e.target.value})} />
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.classTemplates} {t.name}</label>
+                <input className="w-full p-4 rounded-2xl border border-slate-100 bg-slate-50 font-semibold" placeholder={t.classNamePlaceholder} value={newTemplate.name} onChange={e => setNewTemplate({...newTemplate, name: e.target.value})} />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.teacher}</label>
-                <input className="w-full p-4 rounded-2xl border border-slate-100 bg-slate-50 font-semibold" placeholder="Instructor name" value={newTemplate.teacher} onChange={e => setNewTemplate({...newTemplate, teacher: e.target.value})} />
+                <input className="w-full p-4 rounded-2xl border border-slate-100 bg-slate-50 font-semibold" placeholder={t.teacherPlaceholder} value={newTemplate.teacher} onChange={e => setNewTemplate({...newTemplate, teacher: e.target.value})} />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.items}</label>
-                <textarea className="w-full p-4 rounded-2xl border border-slate-100 bg-slate-50 font-semibold h-24" placeholder="Notebook, Pen, Calculator..." value={newTemplate.items} onChange={e => setNewTemplate({...newTemplate, items: e.target.value})} />
+                <textarea className="w-full p-4 rounded-2xl border border-slate-100 bg-slate-50 font-semibold h-24" placeholder={t.itemsPlaceholder} value={newTemplate.items} onChange={e => setNewTemplate({...newTemplate, items: e.target.value})} />
               </div>
               <button onClick={handleAddTemplate} disabled={isGeneratingImages} className="w-full premium-gradient text-white py-4 rounded-2xl font-extrabold shadow-xl mt-2 flex items-center justify-center gap-3 disabled:opacity-70 active:scale-95 transition-all">
                 {isGeneratingImages ? (
                   <>
                     <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>Visualizing items...</span>
+                    <span>{t.visualizing}</span>
                   </>
                 ) : (editingTemplateId ? t.update : t.save)}
               </button>
@@ -284,8 +281,8 @@ const AdminArea: React.FC<Props> = ({ data, onUpdateData, onImageGenerated }) =>
         <div className="space-y-6">
            <div className="bg-white p-8 rounded-[2.5rem] border-2 border-slate-50 space-y-6 shadow-sm">
              <div className="space-y-1">
-               <h3 className="font-extrabold text-slate-800 text-lg">System Vault</h3>
-               <p className="text-xs font-semibold text-slate-400">Export or restore your profile data here.</p>
+               <h3 className="font-extrabold text-slate-800 text-lg">{t.systemVault}</h3>
+               <p className="text-xs font-semibold text-slate-400">{t.systemVaultSub}</p>
              </div>
              <div className="space-y-3">
                <textarea 
@@ -296,7 +293,7 @@ const AdminArea: React.FC<Props> = ({ data, onUpdateData, onImageGenerated }) =>
                />
                <div className="pt-2 space-y-4">
                  <textarea 
-                   placeholder="Paste system backup string..."
+                   placeholder={t.backupPlaceholder}
                    className="w-full h-24 p-5 text-[10px] font-mono bg-white border border-slate-100 rounded-[1.5rem]"
                    value={importText}
                    onChange={(e) => setImportText(e.target.value)}
@@ -305,7 +302,7 @@ const AdminArea: React.FC<Props> = ({ data, onUpdateData, onImageGenerated }) =>
                    onClick={handleImport}
                    className="w-full bg-slate-900 text-white py-4 rounded-2xl text-xs font-extrabold shadow-xl active:scale-95 transition-all"
                  >
-                   Perform Restoration
+                   {t.restoreBtn}
                  </button>
                </div>
              </div>
