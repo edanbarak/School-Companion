@@ -1,20 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
-import { Kid, AppView, ClassTemplate, AppData } from './types';
+import { Kid, AppView, ClassTemplate, AppData, LANGUAGES } from './types';
 import AdminArea from './components/AdminArea';
 import MainArea from './components/MainArea';
 import KidDetail from './components/KidDetail';
 
-// Database Logic using IndexedDB
 const DB_NAME = 'KidScheduleDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'app_data';
 const DATA_KEY = 'main_data';
+const IMAGE_CACHE_NAME = 'kid-schedule-images-v1';
 
 const initDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME);
@@ -40,11 +40,14 @@ const saveToDB = async (data: AppData) => {
   const db = await initDB();
   const transaction = db.transaction(STORE_NAME, 'readwrite');
   const store = transaction.objectStore(STORE_NAME);
-  store.put(data, DATA_KEY);
+  
+  const cleanedData = JSON.parse(JSON.stringify(data));
+  // Keep the imageMap paths as virtual asset URLs in IDB
+  store.put(cleanedData, DATA_KEY);
 };
 
 const App: React.FC = () => {
-  const [data, setData] = useState<AppData>({ kids: [], templates: [], imageMap: {} });
+  const [data, setData] = useState<AppData>({ kids: [], templates: [], imageMap: {}, language: 'en' });
   const [currentView, setCurrentView] = useState<AppView>('home');
   const [selectedKidId, setSelectedKidId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,17 +57,9 @@ const App: React.FC = () => {
       try {
         const saved = await loadFromDB();
         if (saved) {
-          // Robustly merge saved data with defaults to handle schema changes without data loss
-          setData({
-            kids: saved.kids || [],
-            templates: saved.templates || [],
-            imageMap: saved.imageMap || {}
-          });
+          setData(saved);
         } else {
-          // ONLY if the database is completely fresh (new user/browser), 
-          // we create the empty structure. We do NOT seed mock data anymore
-          // to prevent "reset" feel on code changes.
-          const initialData: AppData = { kids: [], templates: [], imageMap: {} };
+          const initialData: AppData = { kids: [], templates: [], imageMap: {}, language: 'en' };
           setData(initialData);
           await saveToDB(initialData);
         }
@@ -82,34 +77,55 @@ const App: React.FC = () => {
     await saveToDB(newData);
   };
 
-  const updateImageCache = async (itemName: string, base64: string) => {
-    const newData = {
-      ...data,
-      imageMap: { ...data.imageMap, [itemName]: base64 }
-    };
-    await persistData(newData);
+  const updateImageCache = async (itemName: string, base64: string): Promise<string> => {
+    const fileName = `${encodeURIComponent(itemName.replace(/\s+/g, '-').toLowerCase())}.jpg`;
+    const imageUrl = `/images/assets/${fileName}`;
+
+    try {
+      const response = await fetch(base64);
+      const blob = await response.blob();
+      const cache = await caches.open(IMAGE_CACHE_NAME);
+      await cache.put(imageUrl, new Response(blob, {
+        headers: { 'Content-Type': 'image/jpeg' }
+      }));
+      
+      setData(prev => {
+        const updated = {
+          ...prev,
+          imageMap: { ...prev.imageMap, [itemName]: imageUrl }
+        };
+        saveToDB(updated);
+        return updated;
+      });
+      
+      return imageUrl;
+    } catch (e) {
+      console.error("Failed to store image", e);
+      return "";
+    }
   };
 
   const selectedKid = data.kids.find(k => k.id === selectedKidId);
+  const currentLang = LANGUAGES.find(l => l.code === data.language) || LANGUAGES[0];
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-indigo-600 font-medium animate-pulse">Accessing Storage...</p>
+          <p className="text-indigo-600 font-medium">Accessing Filesystem...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen max-w-md mx-auto bg-white shadow-2xl relative flex flex-col">
+    <div className={`min-h-screen max-w-md mx-auto bg-white shadow-2xl relative flex flex-col`} dir={currentLang.dir}>
       <header className="px-6 pt-12 pb-6 bg-indigo-600 text-white rounded-b-3xl ios-shadow">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold">KidSchedule</h1>
-            <p className="text-indigo-100 text-sm">Parent Assistant</p>
+            <h1 className="text-2xl font-bold">{data.language === 'he' ? 'לו״ז הילדים' : 'KidSchedule'}</h1>
+            <p className="text-indigo-100 text-sm">{data.language === 'he' ? 'עוזר הורים' : 'Parent Assistant'}</p>
           </div>
           <button 
             onClick={() => {
@@ -137,18 +153,20 @@ const App: React.FC = () => {
             kids={data.kids} 
             templates={data.templates} 
             imageMap={data.imageMap}
+            lang={data.language}
             onSelectKid={(id) => { setSelectedKidId(id); setCurrentView('kid-detail'); }} 
             onImageGenerated={updateImageCache}
           />
         )}
         {currentView === 'admin' && (
-          <AdminArea data={data} onUpdateData={persistData} />
+          <AdminArea data={data} onUpdateData={persistData} onImageGenerated={updateImageCache} />
         )}
         {currentView === 'kid-detail' && selectedKid && (
           <KidDetail 
             kid={selectedKid} 
             templates={data.templates}
             imageMap={data.imageMap}
+            lang={data.language}
             onBack={() => setCurrentView('home')} 
             onUpdateKid={(updatedKid) => {
               const updatedKids = data.kids.map(k => k.id === updatedKid.id ? updatedKid : k);

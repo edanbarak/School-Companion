@@ -1,19 +1,22 @@
 
 import React from 'react';
-import { Kid, DayOfWeek, ClassTemplate } from '../types';
+import { Kid, DayOfWeek, ClassTemplate, TRANSLATIONS } from '../types';
 import ItemImage from './ItemImage';
 
 interface Props {
   kids: Kid[];
   templates: ClassTemplate[];
   imageMap: Record<string, string>;
+  lang: string;
   onSelectKid: (id: string) => void;
   onImageGenerated: (itemName: string, base64: string) => void;
 }
 
 const DAYS: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-const MainArea: React.FC<Props> = ({ kids, templates, imageMap, onSelectKid, onImageGenerated }) => {
+const MainArea: React.FC<Props> = ({ kids, templates, imageMap, lang, onSelectKid, onImageGenerated }) => {
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
+  
   const getToday = (): DayOfWeek => {
     const day = new Date().getDay();
     if (day === 6) return 'Sunday';
@@ -25,8 +28,8 @@ const MainArea: React.FC<Props> = ({ kids, templates, imageMap, onSelectKid, onI
   return (
     <div className="space-y-6">
       <div className="bg-indigo-50 p-6 rounded-3xl border border-indigo-100">
-        <h2 className="text-2xl font-bold text-indigo-900 mb-2">Good morning!</h2>
-        <p className="text-indigo-700">It's {today}. Here's what needs packing.</p>
+        <h2 className="text-2xl font-bold text-indigo-900 mb-2">{t.goodMorning}</h2>
+        <p className="text-indigo-700">{t.todayIs.replace('{day}', today)}</p>
       </div>
 
       <div className="space-y-4">
@@ -34,8 +37,8 @@ const MainArea: React.FC<Props> = ({ kids, templates, imageMap, onSelectKid, onI
           const todaySchedule = kid.schedule.filter(s => s.dayOfWeek === today);
           const packingList = Array.from(new Set(
             todaySchedule.flatMap(s => {
-              const t = templates.find(temp => temp.id === s.templateId);
-              return t ? t.itemsToBring : [];
+              const template = templates.find(temp => temp.id === s.templateId);
+              return template ? template.itemsToBring : [];
             })
           )).filter(Boolean);
           
@@ -43,15 +46,15 @@ const MainArea: React.FC<Props> = ({ kids, templates, imageMap, onSelectKid, onI
             <button
               key={kid.id}
               onClick={() => onSelectKid(kid.id)}
-              className="w-full bg-white p-6 rounded-3xl border border-slate-100 ios-shadow flex flex-col group active:scale-95 transition-all text-left"
+              className="w-full bg-white p-6 rounded-3xl border border-slate-100 ios-shadow flex flex-col group active:scale-95 transition-all text-start"
             >
               <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 font-bold text-lg mr-4 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 font-bold text-lg mx-4 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
                   {kid.name.charAt(0)}
                 </div>
                 <div className="flex-1">
                   <h4 className="text-lg font-bold text-slate-800">{kid.name}</h4>
-                  <p className="text-slate-500 text-sm">{todaySchedule.length} classes today</p>
+                  <p className="text-slate-500 text-sm">{t.classesToday.replace('{count}', todaySchedule.length.toString())}</p>
                 </div>
               </div>
               
@@ -66,7 +69,7 @@ const MainArea: React.FC<Props> = ({ kids, templates, imageMap, onSelectKid, onI
                     </div>
                   ))
                 ) : (
-                  <p className="text-[11px] text-slate-400 italic">Nothing special needed</p>
+                  <p className="text-[11px] text-slate-400 italic">{t.nothingNeeded}</p>
                 )}
               </div>
             </button>
